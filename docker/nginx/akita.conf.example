@@ -1,0 +1,76 @@
+# This sample assumes APP_BASE_PATH=/dogs/akita. Replace every /dogs/akita
+# occurrence when APP_BASE_PATH is changed.
+# Add this upstream to the nginx `http` context. If this host already serves
+# other applications, copy only the three locations into its existing TLS
+# server block instead of creating a second block for the same server_name.
+upstream akita_next {
+    server 127.0.0.1:3101;
+    keepalive 16;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name inventory.example.com;
+
+    # Use a publicly trusted certificate or a Cloudflare Origin CA certificate.
+    ssl_certificate     /etc/nginx/certs/inventory.example.com.pem;
+    ssl_certificate_key /etc/nginx/certs/inventory.example.com.key;
+
+    # The SSE endpoint must be more specific than the general application path.
+    location = /dogs/akita/api/events {
+        # No URI (and no trailing slash) on proxy_pass: Next.js must receive
+        # the original /dogs/akita prefix because it is configured as basePath.
+        proxy_pass http://akita_next;
+
+        proxy_http_version 1.1;
+        proxy_set_header Host              $host;
+        proxy_set_header X-Forwarded-Host  $host;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header Connection        "";
+
+        proxy_connect_timeout 5s;
+        proxy_read_timeout 3600s;
+        proxy_buffering off;
+        proxy_cache off;
+
+        # Prevent origin compression from coalescing small SSE frames. The
+        # application also returns Cache-Control: no-store, no-transform.
+        proxy_set_header Accept-Encoding "";
+        gzip off;
+    }
+
+    # Support the canonical basePath without forcing a trailing slash.
+    location = /dogs/akita {
+        proxy_pass http://akita_next;
+
+        proxy_http_version 1.1;
+        proxy_set_header Host              $host;
+        proxy_set_header X-Forwarded-Host  $host;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header Connection        "";
+
+        proxy_connect_timeout 5s;
+        proxy_read_timeout 60s;
+    }
+
+    # Pages, API routes and /dogs/akita/_next assets retain the basePath.
+    location ^~ /dogs/akita/ {
+        proxy_pass http://akita_next;
+
+        proxy_http_version 1.1;
+        proxy_set_header Host              $host;
+        proxy_set_header X-Forwarded-Host  $host;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header Connection        "";
+
+        proxy_connect_timeout 5s;
+        proxy_read_timeout 60s;
+        client_max_body_size 1m;
+    }
+}

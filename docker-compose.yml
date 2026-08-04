@@ -1,0 +1,99 @@
+name: akita
+
+services:
+  db:
+    image: postgres:17-bookworm
+    restart: unless-stopped
+    stop_grace_period: 30s
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-akita}
+      POSTGRES_USER: ${POSTGRES_USER:-akita}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready --username="$${POSTGRES_USER}" --dbname="$${POSTGRES_DB}"
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    networks:
+      - database
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  migrate:
+    image: akita-migrator:${APP_IMAGE_TAG:-local}
+    build:
+      context: .
+      target: migrator
+    restart: "no"
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL must be set in .env}
+      DEFAULT_HOUSEHOLD_ID: ${DEFAULT_HOUSEHOLD_ID:-00000000-0000-4000-8000-000000000001}
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - database
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  app:
+    image: akita-app:${APP_IMAGE_TAG:-local}
+    build:
+      context: .
+      target: runner
+      args:
+        APP_BASE_PATH: ${APP_BASE_PATH:-/dogs/akita}
+    init: true
+    restart: unless-stopped
+    stop_grace_period: 30s
+    environment:
+      NODE_ENV: production
+      HOSTNAME: 0.0.0.0
+      PORT: "3101"
+      APP_BASE_PATH: ${APP_BASE_PATH:-/dogs/akita}
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL must be set in .env}
+      DEFAULT_HOUSEHOLD_ID: ${DEFAULT_HOUSEHOLD_ID:-00000000-0000-4000-8000-000000000001}
+    ports:
+      - "127.0.0.1:3101:3101"
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - const value=(process.env.APP_BASE_PATH??'').split('/').filter(Boolean).join('/');const base=value?'/'+value:'';fetch('http://127.0.0.1:3101'+base+'/api/health').then((response)=>process.exit(response.ok?0:1)).catch(()=>process.exit(1))
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    networks:
+      - egress
+      - database
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  egress:
+  database:
+    internal: true
+
+volumes:
+  postgres_data:

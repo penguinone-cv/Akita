@@ -1,0 +1,34 @@
+# dependencies
+node_modules/
+.pnpm-store/
+
+# Next.js
+.next/
+out/
+
+# generated Prisma client
+src/generated/
+
+# test output
+coverage/
+playwright-report/
+test-results/
+*.tsbuildinfo
+
+# local environment
+.env*
+!.env.example
+
+# logs and editor files
+*.log
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# local certificates and backups
+*.pem
+*.key
+backups/
+*.dump
+*.sql.gz

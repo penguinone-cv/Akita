@@ -1,0 +1,107 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum OperationKind {
+  CATEGORY_CREATED
+  CATEGORY_UPDATED
+  CATEGORY_DELETED
+  CATEGORY_REORDERED
+  ITEM_CREATED
+  ITEM_UPDATED
+  ITEM_DELETED
+  ITEM_RESTORED
+  ITEM_REORDERED
+  STOCK_ADJUSTED
+  STOCK_SET
+  STOCK_UNDONE
+}
+
+model Household {
+  id                   String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name                 String
+  categoryOrderVersion Int         @default(0) @map("category_order_version")
+  eventSeq             BigInt      @default(0) @map("event_seq")
+  categories           Category[]
+  items                Item[]
+  operations           Operation[]
+  createdAt            DateTime    @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt            DateTime    @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@map("households")
+}
+
+model Category {
+  id                String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  householdId       String    @map("household_id") @db.Uuid
+  household         Household @relation(fields: [householdId], references: [id], onDelete: Restrict)
+  name              String    @db.VarChar(80)
+  nameKey           String    @map("name_key") @db.VarChar(160)
+  position          Int
+  metadataVersion   Int       @default(0) @map("metadata_version")
+  itemsOrderVersion Int       @default(0) @map("items_order_version")
+  isSystem          Boolean   @default(false) @map("is_system")
+  items             Item[]
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt         DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt         DateTime? @map("deleted_at") @db.Timestamptz(3)
+
+  @@unique([id, householdId])
+  @@index([householdId, position])
+  @@map("categories")
+}
+
+model Item {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  householdId     String    @map("household_id") @db.Uuid
+  household       Household @relation(fields: [householdId], references: [id], onDelete: Restrict)
+  categoryId      String    @map("category_id") @db.Uuid
+  category        Category  @relation(fields: [categoryId, householdId], references: [id, householdId], onDelete: Restrict)
+  name            String    @db.VarChar(120)
+  nameKey         String    @map("name_key") @db.VarChar(240)
+  quantity        Int       @default(0)
+  position        Int
+  metadataVersion Int       @default(0) @map("metadata_version")
+  stockVersion    Int       @default(0) @map("stock_version")
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt       DateTime? @map("deleted_at") @db.Timestamptz(3)
+
+  @@index([householdId, categoryId, position])
+  @@map("items")
+}
+
+model Operation {
+  id              String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  householdId     String        @map("household_id") @db.Uuid
+  household       Household     @relation(fields: [householdId], references: [id], onDelete: Restrict)
+  householdSeq    BigInt        @map("household_seq")
+  idempotencyKey  String        @map("idempotency_key") @db.Uuid
+  requestHash     String        @map("request_hash") @db.Char(64)
+  kind            OperationKind
+  aggregateType   String        @map("aggregate_type") @db.VarChar(32)
+  aggregateId     String        @map("aggregate_id") @db.Uuid
+  delta           Int?
+  before          Json?
+  after           Json?
+  eventPayload    Json          @map("event_payload")
+  responsePayload Json?         @map("response_payload")
+  undoTokenHash   String?       @map("undo_token_hash") @db.Char(64)
+  undoExpiresAt   DateTime?     @map("undo_expires_at") @db.Timestamptz(3)
+  undoneAt        DateTime?     @map("undone_at") @db.Timestamptz(3)
+  undoOfId        String?       @unique @map("undo_of_id") @db.Uuid
+  undoOf          Operation?    @relation("UndoLink", fields: [undoOfId], references: [id], onDelete: Restrict)
+  undoneBy        Operation?    @relation("UndoLink")
+  createdAt       DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  @@unique([householdId, householdSeq])
+  @@unique([householdId, idempotencyKey])
+  @@index([householdId, householdSeq])
+  @@index([householdId, aggregateType, aggregateId])
+  @@map("operations")
+}
