@@ -53,10 +53,10 @@ docker compose up --no-deps migrate
 docker compose up -d app
 ```
 
-初期マイグレーションが既定のHouseholdと「未分類」カテゴリを再実行安全な形で作成するため、通常はseed操作を追加で行う必要はありません。明示的にseedを再適用したい場合だけ次を実行します。seedは再実行安全ですが、本番では目的を確認してから実行してください。
+初期マイグレーションが既定のHouseholdと「未分類」カテゴリを再実行安全な形で作成するため、通常はseed操作を追加で行う必要はありません。明示的にseedを再適用したい場合だけ次を実行します。seedは再実行安全ですが、本番では目的を確認してから実行してください。実行時にCorepackやパッケージレジストリへ接続しないよう、イメージ内に導入済みのNode.jsローダーを直接使用します。
 
 ```bash
-docker compose run --rm migrate pnpm db:seed
+docker compose run --rm migrate node --import tsx prisma/seed.ts
 ```
 
 ## 4. nginx

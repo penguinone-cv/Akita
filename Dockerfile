@@ -28,7 +28,10 @@ FROM dependencies AS migrator
 COPY . .
 USER node
 
-CMD ["pnpm", "db:deploy"]
+# Invoke the Prisma CLI already installed in the image. Using pnpm here would
+# make Corepack look for its per-user cache and could trigger a network download
+# when the container starts as the unprivileged node user.
+CMD ["node", "node_modules/prisma/build/index.js", "migrate", "deploy"]
 
 
 FROM dependencies AS builder
