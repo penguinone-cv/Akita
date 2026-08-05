@@ -126,7 +126,7 @@ export async function runMutation<T>(
           },
         });
 
-        await tx.$queryRaw`SELECT pg_notify('inventory_events', ${lastEventSeq})`;
+        await tx.$executeRaw`SELECT pg_notify('inventory_events', ${lastEventSeq})`;
         return response;
       }, {
         isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
