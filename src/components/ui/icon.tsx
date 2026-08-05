@@ -10,8 +10,10 @@ export type IconName =
   | "edit"
   | "grip"
   | "menu"
+  | "moon"
   | "reorder"
   | "settings"
+  | "sun"
   | "warning";
 
 const glyphs: Record<IconName, string> = {
@@ -24,8 +26,10 @@ const glyphs: Record<IconName, string> = {
   edit: "✎",
   grip: "⠿",
   menu: "•••",
+  moon: "☾",
   reorder: "↕",
   settings: "⚙",
+  sun: "☀",
   warning: "!",
 };
 

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { Icon } from "@/components/ui/icon";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { Toast, type ToastMessage } from "@/components/ui/toast";
 import type {
   InventoryCategory,
@@ -661,6 +662,7 @@ export function InventoryApp() {
               </div>
             </div>
             <div className="header-actions">
+              <ThemeToggle />
               <button
                 className="button button-primary"
                 type="button"
