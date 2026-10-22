@@ -2,7 +2,7 @@
 
 ARG APP_BASE_PATH=/dogs/akita
 
-FROM node:24-bookworm-slim AS base
+FROM node:24.22.1-bookworm-slim AS base
 
 ENV PNPM_HOME=/pnpm
 ENV PATH=$PNPM_HOME:$PATH
@@ -49,7 +49,7 @@ RUN mkdir -p public \
     && pnpm build
 
 
-FROM node:24-bookworm-slim AS runner
+FROM node:24.22.1-bookworm-slim AS runner
 
 ARG APP_BASE_PATH
 
